@@ -5,7 +5,9 @@ export default {
 	css: {
 		postcss: {
 			plugins: [
-				'a'
+				combineMediaQueries(),
+				combineSelectors({ removeDuplicatedValues: true }),
+				autoprefixer(),
 			],
 		},
 	},
@@ -13,6 +15,21 @@ export default {
 		minify: isProd,
 	},
 	plugins: [
-		'b'
+		imageMin({
+			svgo: {
+				// https://github.com/svg/svgo#built-in-plugins
+				plugins: [
+					{ name: 'RemoveTitle', active: false },
+					{ name: 'RemoveDescription', active: false },
+					{ name: 'RemoveViewBox', active: false },
+					{ name: 'removeDimensions', active: true },
+					{ name: 'removeScriptElement', active: true },
+					{ name: 'removeStyleElement', active: true },
+				],
+			},
+		}),
+		compress({
+			algorithm: 'brotliCompress',
+		}),
 	],
 };
