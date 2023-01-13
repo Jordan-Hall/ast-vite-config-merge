@@ -21,13 +21,12 @@ export function mergeFile(path1: string, path2: string, destination: string) {
 	const sourceFile1 = ts.createSourceFile(path1, code1, ts.ScriptTarget.Latest);
 	const sourceFile2 = ts.createSourceFile(path2, code2, ts.ScriptTarget.Latest);
 
-	// Find the exported object or function in both files
 	let exportedObject1, exportedObject2, exportedFunction1, exportedFunction2;
 	for (const statement of sourceFile1.statements) {
 		if (ts.isExportAssignment(statement)) {
-			if (ts.isObjectLiteralExpression(statement.expression) || (ts.isArrowFunction(statement.expression) && statement.expression.body)) {
+			if (ts.isObjectLiteralExpression(statement.expression)) {
 				exportedObject1 = statement.expression;
-			} else if (ts.isFunctionExpression(statement.expression) || (ts.isArrowFunction(statement.expression) && statement.expression.body)) {
+			} else if (ts.isFunctionExpression(statement.expression)) {
 				exportedFunction1 = statement.expression;
 			}
 		}
@@ -41,24 +40,6 @@ export function mergeFile(path1: string, path2: string, destination: string) {
 			}
 		}
 	}
-
-	// Create a new TypeScript file
-	const newFile = ts.createSourceFile("newFile.ts", "", ts.ScriptTarget.Latest);
-	const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
-	const newFileStatements: ts.Statement[] = [];
-
-	// Combine the import statements
-	newFileStatements.push(...sourceFile1.statements.filter(s => ts.isImportDeclaration(s)));
-	newFileStatements.push(...sourceFile2.statements.filter(s => ts.isImportDeclaration(s)));
-
-	// Combine the variable declarations
-	newFileStatements.push(...sourceFile1.statements.filter(s => ts.isVariableStatement(s)));
-	newFileStatements.push(...sourceFile2.statements.filter(s => ts.isVariableStatement(s)));
-
-	// Combine the function definitions
-	newFileStatements.push(...sourceFile1.statements.filter(s => ts.isFunctionDeclaration(s)));
-	newFileStatements.push(...sourceFile2.statements.filter(s => ts.isFunctionDeclaration(s)));
-
 	// Check which export is an object and which is a function
 	let obj, func;
 	if (exportedObject1 && exportedFunction2) {
@@ -67,6 +48,13 @@ export function mergeFile(path1: string, path2: string, destination: string) {
 	} else if (exportedFunction1 && exportedObject2) {
 		obj = exportedObject2;
 		func = exportedFunction1;
+	} else if (exportedObject1 && exportedObject2) {
+		const merged = mergeDeeply(exportedObject1, exportedObject2);
+		exportedObject1.properties = merged.properties;
+		obj = exportedObject1;
+	} else if (exportedFunction1 && exportedFunction2) {
+
+		/// merge functions
 	}
 	// If both exports are objects, use the existing deep merge logic
 	if (obj && !func) {
@@ -100,8 +88,30 @@ export function mergeFile(path1: string, path2: string, destination: string) {
 			returnStatement.expression = obj;
 		}
 	}
+	// Create a new TypeScript file
+	const newFile = ts.createSourceFile("newFile.ts", "", ts.ScriptTarget.Latest);
+	const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
+	const newFileStatements: ts.Statement[] = [];
 
+	// Combine the import statements
+	newFileStatements.push(...sourceFile1.statements.filter(s => ts.isImportDeclaration(s)));
+	newFileStatements.push(...sourceFile2.statements.filter(s => ts.isImportDeclaration(s)));
 
+	// Combine the variable declarations
+	newFileStatements.push(...sourceFile1.statements.filter(s => ts.isVariableStatement(s)));
+	newFileStatements.push(...sourceFile2.statements.filter(s => ts.isVariableStatement(s)));
+
+	// Combine the function definitions
+	newFileStatements.push(...sourceFile1.statements.filter(s => ts.isFunctionDeclaration(s)));
+	newFileStatements.push(...sourceFile2.statements.filter(s => ts.isFunctionDeclaration(s)));
+
+	// Add the merged default export
+	if (obj) {
+		newFileStatements.push(ts.factory.createExportAssignment(undefined, false, obj));
+	} else if (func) {
+		newFileStatements.push(ts.factory.createExportAssignment(undefined, true, func));
+	}
+	newFileStatements.push(obj ? obj : func);
 
 	// Create the directory if it doesn't exist
 	const dir = dirname(destination);
@@ -110,5 +120,6 @@ export function mergeFile(path1: string, path2: string, destination: string) {
 	}
 
 	// Write the merged file to the destination
-	writeFileSync(destination, sourceFile1.getFullText(), "utf-8");
+	const newFileText = printer.printFile(ts.factory.updateSourceFile(newFile, newFileStatements));
+	writeFileSync(destination, newFileText, "utf-8");
 }
