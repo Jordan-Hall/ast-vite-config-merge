@@ -1,13 +1,8 @@
 import * as ts from 'typescript';
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
-import { dirname } from 'path';
 import { mergeDeeply } from './merge-deeply';
 
-export function mergeFile(path1: string, path2: string, destination: string) {
-	const code1 = readFileSync(path1, "utf-8");
-	const code2 = readFileSync(path2, "utf-8");
-	const sourceFile1 = ts.createSourceFile(path1, code1, ts.ScriptTarget.Latest);
-	const sourceFile2 = ts.createSourceFile(path2, code2, ts.ScriptTarget.Latest);
+export function mergeViteSourceFiles(sourceFile1: ts.SourceFile, sourceFile2: ts.SourceFile):ts.SourceFile {
+
 
 	let exportedObject1, exportedObject2, exportedFunction1, exportedFunction2, isCallFunctionExpression1, isCallFunctionExpression2, statement1, statement2;
 	for (const statement of sourceFile1.statements) {
@@ -106,10 +101,8 @@ export function mergeFile(path1: string, path2: string, destination: string) {
 		func.body = returnStatement;
 	}
 
-
 	// Create a new TypeScript file
-	const newFile = ts.createSourceFile("newFile.ts", "", ts.ScriptTarget.Latest);
-	const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
+	const newFile = ts.createSourceFile("merge.ts", "", ts.ScriptTarget.Latest);
 	const newFileStatements: ts.Statement[] = [];
 
 	// Combine the import statements
@@ -127,7 +120,7 @@ export function mergeFile(path1: string, path2: string, destination: string) {
 	// Add the merged default export
 	if (func) {
 
-		const updateStatement = (statement: any , func: any) => {
+		const updateStatement = (statement: any, func: any) => {
 			if (ts.isCallExpression(statement.expression)) {
 				if (ts.isFunctionExpression(statement.expression.expression) || ts.isArrowFunction(statement.expression.expression)) {
 					statement.expression.expression = func
@@ -149,13 +142,7 @@ export function mergeFile(path1: string, path2: string, destination: string) {
 		newFileStatements.push(statement1);
 	}
 
-	// Create the directory if it doesn't exist
-	const dir = dirname(destination);
-	if (!existsSync(dir)) {
-		mkdirSync(dir);
-	}
 
 	// Write the merged file to the destination
-	const newFileText = printer.printFile(ts.factory.updateSourceFile(newFile, newFileStatements));
-	writeFileSync(destination, newFileText, "utf-8");
+	return ts.factory.updateSourceFile(newFile, newFileStatements);
 }
