@@ -81,10 +81,10 @@ export function mergeViteSourceFiles(sourceFile1: ts.SourceFile, sourceFile2: ts
 	// If one export is an object and the other is a function, merge the object into the function return statement
 	else if (obj && func) {
 		let returnStatement;
-		if (ts.isArrowFunction(func)) {
+		if (ts.isArrowFunction(func) && !(func.body as any).statements) {
 			returnStatement = func.body;
 		} else {
-			for (const statement of func.body.statements) {
+			for (const statement of (func.body as any).statements) {
 				if (ts.isReturnStatement(statement)) {
 					returnStatement = statement;
 					break;
@@ -97,7 +97,16 @@ export function mergeViteSourceFiles(sourceFile1: ts.SourceFile, sourceFile2: ts
 		} else {
 			(returnStatement as any).expression = obj;
 		}
-		(func as any).body = returnStatement;
+		if (ts.isArrowFunction(func) && !(func.body as any).statements) {
+			(func as any).body = returnStatement
+		} else {
+			for (let i = 0; i < (func.body as any).statements.length; i++) {
+				if (ts.isReturnStatement((func.body as any).statements[i])) {
+					(func.body as any).statements[i] = returnStatement;
+					break;
+				}
+			}
+		}
 	}
 
 	// Create a new TypeScript file

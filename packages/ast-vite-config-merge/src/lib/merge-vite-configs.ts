@@ -8,7 +8,6 @@ export function mergeViteConfigFile(path1: string, path2: string, destination: s
 	const code2 = readFileSync(path2, "utf-8");
 	const sourceFile1 = ts.createSourceFile(path1, code1, target);
 	const sourceFile2 = ts.createSourceFile(path2, code2, target);
-
 	const newFile = mergeViteSourceFiles(sourceFile1, sourceFile2);
 	const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
 	// Create the directory if it doesn't exist

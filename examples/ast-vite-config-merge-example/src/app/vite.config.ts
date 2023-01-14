@@ -1,6 +1,10 @@
 
 const isProd = process.env.NODE_ENV === 'production';
-
+const combineMediaQueries = () => { };
+const combineSelectors = (obj) => {}
+const autoprefixer = () => { };
+const imageMin = (obj) => { };
+const compress = (obj) => { };
 export default {
 	css: {
 		postcss: {

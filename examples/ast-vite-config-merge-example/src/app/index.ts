@@ -1,5 +1,10 @@
 import { mergeViteConfigFile } from 'ast-vite-config-merge';
+import { join } from 'path';
 
 export function runner() {
-	mergeViteConfigFile('vite.config.ts', 'vite.config2.ts', 'vite.config.merged.ts');
+	mergeViteConfigFile(
+		`path to config`,
+		`path to config 2`,
+		join(__dirname, 'vite.config.merged.ts')
+	)
 }
