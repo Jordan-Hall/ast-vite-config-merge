@@ -1,0 +1,41 @@
+{
+  "name": "ast-vite-config-merge",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/ast-vite-config-merge/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nrwl/js:swc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/ast-vite-config-merge",
+        "main": "packages/ast-vite-config-merge/src/index.ts",
+        "tsConfig": "packages/ast-vite-config-merge/tsconfig.lib.json",
+        "assets": ["packages/ast-vite-config-merge/*.md"]
+      }
+    },
+    "publish": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node tools/scripts/publish.mjs ast-vite-config-merge {args.ver} {args.tag}"
+      },
+      "dependsOn": ["build"]
+    },
+    "lint": {
+      "executor": "@nrwl/linter:eslint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["packages/ast-vite-config-merge/**/*.ts"]
+      }
+    },
+    "test": {
+      "executor": "@nrwl/vite:test",
+      "outputs": ["coverage/packages/ast-vite-config-merge"],
+      "options": {
+        "passWithNoTests": true,
+        "reportsDirectory": "../../coverage/packages/ast-vite-config-merge"
+      }
+    }
+  },
+  "tags": []
+}
