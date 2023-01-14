@@ -1,10 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import * as ts from 'typescript';
 import { mergeDeeply } from './merge-deeply';
 
 export function mergeViteSourceFiles(sourceFile1: ts.SourceFile, sourceFile2: ts.SourceFile):ts.SourceFile {
 
 
-	let exportedObject1, exportedObject2, exportedFunction1, exportedFunction2, isCallFunctionExpression1, isCallFunctionExpression2, statement1, statement2;
+	let exportedObject1, exportedObject2, exportedFunction1, exportedFunction2, statement1, statement2;
 	for (const statement of sourceFile1.statements) {
 		if (ts.isExportAssignment(statement)) {
 			statement1 = statement;
@@ -15,7 +16,6 @@ export function mergeViteSourceFiles(sourceFile1: ts.SourceFile, sourceFile2: ts
 					exportedFunction1 = statement.expression.expression;
 				} else if (ts.isFunctionExpression(statement.expression.arguments[0]) || ts.isArrowFunction(statement.expression.arguments[0])) {
 					exportedFunction1 = statement.expression.arguments[0];
-					isCallFunctionExpression1 = true;
 				}
 			} else if (ts.isFunctionExpression(statement.expression)) {
 				exportedFunction1 = statement.expression;
@@ -32,7 +32,6 @@ export function mergeViteSourceFiles(sourceFile1: ts.SourceFile, sourceFile2: ts
 					exportedFunction2 = statement.expression.expression;
 				} else if (ts.isFunctionExpression(statement.expression.arguments[0]) || ts.isArrowFunction(statement.expression.arguments[0])) {
 					exportedFunction2 = statement.expression.arguments[0];
-					isCallFunctionExpression2;
 				}
 			} else if (ts.isFunctionExpression(statement.expression)) {
 				exportedFunction2 = statement.expression;
@@ -48,7 +47,7 @@ export function mergeViteSourceFiles(sourceFile1: ts.SourceFile, sourceFile2: ts
 		func = exportedFunction1;
 	} else if (exportedObject1 && exportedObject2) {
 		const merged = mergeDeeply(exportedObject1, exportedObject2);
-		exportedObject1.properties = merged.properties;
+		(exportedObject1 as any).properties = merged.properties;
 		obj = exportedObject1;
 	} else if (exportedFunction1 && exportedFunction2) {
 		// merge the two functions
@@ -59,10 +58,10 @@ export function mergeViteSourceFiles(sourceFile1: ts.SourceFile, sourceFile2: ts
 				[],
 				undefined,
 				ts.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
-				ts.factory.createArrayLiteralExpression([exportedFunction1.body, exportedFunction2.body])
+				ts.factory.createArrayLiteralExpression([(exportedFunction1 as any).body, (exportedFunction2 as any).body])
 			)
 		} else {
-			let statements = [...exportedFunction1.body.statements, ...exportedFunction2.body.statements];
+			const statements = [...(exportedFunction1.body as any).statements, ...(exportedFunction2.body as any).statements];
 			func = ts.factory.createFunctionExpression(
 				exportedFunction1.modifiers,
 				exportedFunction1.asteriskToken,
@@ -76,8 +75,8 @@ export function mergeViteSourceFiles(sourceFile1: ts.SourceFile, sourceFile2: ts
 	}
 	// If both exports are objects, use the existing deep merge logic
 	if (obj && !func) {
-		const merged = mergeDeeply(exportedObject1, exportedObject2);
-		exportedObject1.properties = merged.properties;
+		const merged = mergeDeeply(exportedObject1 as ts.ObjectLiteralExpression, exportedObject2 as ts.ObjectLiteralExpression);
+		(exportedObject1 as any).properties = merged.properties;
 	}
 	// If one export is an object and the other is a function, merge the object into the function return statement
 	else if (obj && func) {
@@ -92,13 +91,13 @@ export function mergeViteSourceFiles(sourceFile1: ts.SourceFile, sourceFile2: ts
 				}
 			}
 		}
-		if (ts.isObjectLiteralExpression(returnStatement.expression)) {
-			const merged = mergeDeeply(obj, returnStatement.expression);
-			returnStatement.expression.properties = merged.properties;
+		if (ts.isObjectLiteralExpression((returnStatement as any)?.expression)) {
+			const merged = mergeDeeply(obj, (returnStatement as any).expression);
+			(returnStatement as any).expression.properties = merged.properties;
 		} else {
-			returnStatement.expression = obj;
+			(returnStatement as any).expression = obj;
 		}
-		func.body = returnStatement;
+		(func as any).body = returnStatement;
 	}
 
 	// Create a new TypeScript file
@@ -132,14 +131,14 @@ export function mergeViteSourceFiles(sourceFile1: ts.SourceFile, sourceFile2: ts
 			}
 			return statement;
 		}
-		if (ts.isCallExpression(statement1.expression)) {
+		if (ts.isCallExpression((statement1 as ts.ExportAssignment).expression)) {
 			newFileStatements.push(updateStatement(statement1, func));
 		} else {
 			newFileStatements.push(updateStatement(statement2, func));
 		}
 	} else if (obj) {
-		statement1.expression = obj;
-		newFileStatements.push(statement1);
+		(statement1 as any).expression = obj;
+		newFileStatements.push(statement1 as ts.ExportAssignment);
 	}
 
 
